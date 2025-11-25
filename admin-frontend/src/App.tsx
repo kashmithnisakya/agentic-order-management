@@ -3,14 +3,6 @@ import ChatPanel from './components/ChatPanel'
 import './App.css'
 
 // Types
-interface Agent {
-  type: string
-  name: string
-  description: string
-  capabilities: string[]
-  status: string
-}
-
 interface Order {
   order_id: string
   user_id: string
@@ -110,12 +102,12 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>admin</h1>
+        <h1>Admin Dashboard</h1>
       </header>
 
       <main className="main-container">
         <div className="dashboard-section">
-          <h2 className="section-title">dashboard</h2>
+          <h2 className="section-title">Analytics Overview</h2>
           {analytics && (
             <div className="metrics-grid">
               <div className="metric-card">

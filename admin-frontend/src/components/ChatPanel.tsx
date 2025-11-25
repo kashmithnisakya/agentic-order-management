@@ -84,7 +84,7 @@ export default function ChatPanel() {
   return (
     <div className="chat-panel">
       <div className="chat-header">
-        <h2>chat</h2>
+        <h2>AI Assistant</h2>
       </div>
 
       <div className="chat-messages">

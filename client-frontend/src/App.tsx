@@ -1,7 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import './App.css'
 
-// Types
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+}
+
 interface Product {
   product_id: string
   name: string
@@ -12,39 +18,26 @@ interface Product {
   unit: string
 }
 
-interface OrderItem {
-  product_id: string
-  product_name: string
-  quantity: number
-  unit_price: number
-  total_price: number
-}
-
-interface Order {
-  order_id: string
-  user_id: string
-  items: OrderItem[]
-  total_amount: number
-  status: string
-  created_at: string
-  updated_at: string
-}
-
 const API_BASE = 'http://localhost:8000/api'
-const USER_ID = 'user_001' // Demo user
+const USER_ID = 'user_001'
 
 function App() {
-  const [message, setMessage] = useState('')
-  const [response, setResponse] = useState('')
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
-  const [activeTab, setActiveTab] = useState<'order' | 'status' | 'history'>('order')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Fetch products on mount
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
   useEffect(() => {
     fetchProducts()
-    fetchOrders()
   }, [])
 
   const fetchProducts = async () => {
@@ -57,250 +50,204 @@ function App() {
     }
   }
 
-  const fetchOrders = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/orders/user/${USER_ID}`)
-      const data = await res.json()
-      setOrders(data)
-    } catch (error) {
-      console.error('Error fetching orders:', error)
-    }
-  }
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return
 
-  const handlePlaceOrder = async () => {
-    if (!message.trim()) {
-      setResponse('Please enter an order request')
-      return
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input,
+      timestamp: new Date()
     }
 
+    setMessages(prev => [...prev, userMessage])
+    const currentInput = input
+    setInput('')
     setLoading(true)
-    setResponse('')
 
     try {
-      const res = await fetch(`${API_BASE}/chat/order`, {
+      // Try to place order first (most common action)
+      const response = await fetch(`${API_BASE}/chat/order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: USER_ID,
-          message: message
+          message: currentInput
         })
       })
 
-      const data = await res.json()
+      const data = await response.json()
 
+      let assistantContent = ''
       if (data.success) {
-        setResponse(`✓ ${data.message}\n\nOrder ID: ${data.order_id}\nTotal: $${data.order_details?.total_amount || 0}`)
-        setMessage('')
-        fetchOrders() // Refresh orders
-      } else {
-        setResponse(`✗ ${data.message || data.error || 'Failed to process order'}`)
-      }
-    } catch (error) {
-      setResponse(`✗ Error: ${error instanceof Error ? error.message : 'Failed to process order'}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleStatusQuery = async () => {
-    if (!message.trim()) {
-      setResponse('Please enter a status query')
-      return
-    }
-
-    setLoading(true)
-    setResponse('')
-
-    try {
-      const res = await fetch(`${API_BASE}/chat/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: USER_ID,
-          query: message
-        })
-      })
-
-      const data = await res.json()
-
-      if (data.success) {
-        let responseText = data.message
-
-        if (data.orders && data.orders.length > 0) {
-          responseText += '\n\n'
-          data.orders.forEach((order: Order) => {
-            responseText += `\n📦 Order ${order.order_id}\n`
-            responseText += `   Status: ${order.status}\n`
-            responseText += `   Total: $${order.total_amount}\n`
-            responseText += `   Date: ${new Date(order.created_at).toLocaleDateString()}\n`
+        assistantContent = `${data.message}\n\n`
+        if (data.order_id) {
+          assistantContent += `Order ID: ${data.order_id}\n`
+        }
+        if (data.order_details?.total_amount) {
+          assistantContent += `Total Amount: $${data.order_details.total_amount}\n`
+        }
+        if (data.order_details?.items) {
+          assistantContent += '\nItems:\n'
+          data.order_details.items.forEach((item: any) => {
+            assistantContent += `- ${item.product_name} x ${item.quantity} = $${item.total_price}\n`
           })
         }
-
-        setResponse(responseText)
-        setMessage('')
       } else {
-        setResponse(`✗ ${data.message || 'Failed to fetch status'}`)
+        // If order fails, try status query
+        if (data.message?.toLowerCase().includes('status') ||
+            data.message?.toLowerCase().includes('order') ||
+            currentInput.toLowerCase().includes('where') ||
+            currentInput.toLowerCase().includes('status')) {
+          try {
+            const statusResponse = await fetch(`${API_BASE}/chat/status`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user_id: USER_ID,
+                query: currentInput
+              })
+            })
+            const statusData = await statusResponse.json()
+            assistantContent = statusData.message || data.message
+          } catch {
+            assistantContent = data.message || data.error || 'Sorry, I could not process your request.'
+          }
+        } else {
+          assistantContent = data.message || data.error || 'Sorry, I could not process your request.'
+        }
       }
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: assistantContent,
+        timestamp: new Date()
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
-      setResponse(`✗ Error: ${error instanceof Error ? error.message : 'Failed to fetch status'}`)
+      console.error('Error sending message:', error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
     }
   }
 
   return (
     <div className="app">
       <header className="header">
-        <h1>🛒 Order Management System</h1>
-        <p>Client Dashboard - Natural Language Ordering</p>
+        <h1>Customer Portal</h1>
       </header>
 
-      <nav className="tabs">
-        <button
-          className={activeTab === 'order' ? 'active' : ''}
-          onClick={() => setActiveTab('order')}
-        >
-          Place Order
-        </button>
-        <button
-          className={activeTab === 'status' ? 'active' : ''}
-          onClick={() => setActiveTab('status')}
-        >
-          Check Status
-        </button>
-        <button
-          className={activeTab === 'history' ? 'active' : ''}
-          onClick={() => setActiveTab('history')}
-        >
-          Order History
-        </button>
-      </nav>
-
-      <main className="main-content">
-        {activeTab === 'order' && (
-          <div className="section">
-            <h2>Place an Order</h2>
-            <p className="hint">
-              Use natural language! Try: "I would like to order 100 units of wireless keyboards"
-            </p>
-
-            <div className="input-group">
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type your order request here..."
-                rows={4}
-                disabled={loading}
-              />
-              <button
-                onClick={handlePlaceOrder}
-                disabled={loading}
-                className="btn-primary"
-              >
-                {loading ? 'Processing...' : 'Place Order'}
-              </button>
-            </div>
-
-            {response && (
-              <div className={`response ${response.startsWith('✓') ? 'success' : 'error'}`}>
-                <pre>{response}</pre>
+      <div className="main-layout">
+        <aside className="products-sidebar">
+          <h2>Available Products</h2>
+          <div className="products-list">
+            {products.length === 0 ? (
+              <div className="loading-state">
+                <p>Loading products...</p>
               </div>
-            )}
-
-            <div className="products-section">
-              <h3>Available Products</h3>
-              <div className="products-grid">
-                {products.map((product) => (
-                  <div key={product.product_id} className="product-card">
-                    <h4>{product.name}</h4>
-                    <p className="description">{product.description}</p>
-                    <p className="price">${product.price}</p>
-                    <p className="stock">
-                      {product.stock_quantity > 0
-                        ? `${product.stock_quantity} in stock`
-                        : 'Out of stock'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'status' && (
-          <div className="section">
-            <h2>Check Order Status</h2>
-            <p className="hint">
-              Ask about your orders! Try: "Where is my order?" or "What's the status of my orders?"
-            </p>
-
-            <div className="input-group">
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Ask about your order status..."
-                rows={3}
-                disabled={loading}
-              />
-              <button
-                onClick={handleStatusQuery}
-                disabled={loading}
-                className="btn-primary"
-              >
-                {loading ? 'Checking...' : 'Check Status'}
-              </button>
-            </div>
-
-            {response && (
-              <div className="response success">
-                <pre>{response}</pre>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'history' && (
-          <div className="section">
-            <h2>Order History</h2>
-
-            {orders.length === 0 ? (
-              <p className="empty-state">No orders yet. Place your first order!</p>
             ) : (
-              <div className="orders-list">
-                {orders.map((order) => (
-                  <div key={order.order_id} className="order-card">
-                    <div className="order-header">
-                      <h3>Order {order.order_id}</h3>
-                      <span className={`status status-${order.status}`}>
-                        {order.status}
-                      </span>
-                    </div>
-
-                    <div className="order-items">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="order-item">
-                          <span className="item-name">{item.product_name}</span>
-                          <span className="item-quantity">Qty: {item.quantity}</span>
-                          <span className="item-price">${item.total_price}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="order-footer">
-                      <span className="order-date">
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </span>
-                      <span className="order-total">
-                        Total: ${order.total_amount}
-                      </span>
-                    </div>
+              products.map((product) => (
+                <div key={product.product_id} className="product-card">
+                  <h3>{product.name}</h3>
+                  <p className="product-description">{product.description}</p>
+                  <div className="product-details">
+                    <span className="product-price">${product.price}</span>
+                    <span className="product-stock">
+                      {product.stock_quantity} {product.unit} in stock
+                    </span>
                   </div>
-                ))}
-              </div>
+                  <span className="product-category">{product.category}</span>
+                </div>
+              ))
             )}
           </div>
-        )}
+        </aside>
+
+        <main className="chat-container">
+        <div className="chat-header">
+          <h2>Order Assistant</h2>
+          <p>Ask me to place orders, check status, or answer questions!</p>
+        </div>
+
+        <div className="chat-messages">
+          {messages.length === 0 && (
+            <div className="welcome-message">
+              <h3>Welcome!</h3>
+              <p>I can help you with:</p>
+              <ul>
+                <li>Place orders using natural language</li>
+                <li>Check order status</li>
+                <li>View order history</li>
+                <li>Answer questions about products</li>
+              </ul>
+              <p className="example">Try: "I need 50 wireless keyboards" or "Where is my order?"</p>
+            </div>
+          )}
+
+          {messages.map((msg) => (
+            <div key={msg.id} className={`message message-${msg.role}`}>
+              <div className="message-content">
+                {msg.content.split('\n').map((line, i) => (
+                  <p key={i}>{line || '\u00A0'}</p>
+                ))}
+              </div>
+              <div className="message-time">
+                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="message message-assistant">
+              <div className="message-content typing">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="chat-input-area">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message here..."
+            disabled={loading}
+            className="chat-input"
+          />
+          <button
+            onClick={sendMessage}
+            disabled={loading || !input.trim()}
+            className="send-button"
+          >
+            Send
+          </button>
+        </div>
       </main>
+      </div>
     </div>
   )
 }
