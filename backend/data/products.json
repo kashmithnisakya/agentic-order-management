@@ -1,0 +1,74 @@
+[
+  {
+    "product_id": "prod_001",
+    "name": "Wireless Keyboard",
+    "description": "Ergonomic wireless keyboard with backlit keys",
+    "category": "Electronics",
+    "price": 49.99,
+    "stock_quantity": 500,
+    "unit": "units"
+  },
+  {
+    "product_id": "prod_002",
+    "name": "USB Mouse",
+    "description": "Optical USB mouse with 6 programmable buttons",
+    "category": "Electronics",
+    "price": 24.99,
+    "stock_quantity": 750,
+    "unit": "units"
+  },
+  {
+    "product_id": "prod_003",
+    "name": "Laptop Stand",
+    "description": "Adjustable aluminum laptop stand",
+    "category": "Accessories",
+    "price": 39.99,
+    "stock_quantity": 300,
+    "unit": "units"
+  },
+  {
+    "product_id": "prod_004",
+    "name": "HDMI Cable",
+    "description": "Premium 6ft HDMI cable supporting 4K",
+    "category": "Cables",
+    "price": 14.99,
+    "stock_quantity": 1000,
+    "unit": "units"
+  },
+  {
+    "product_id": "prod_005",
+    "name": "Webcam HD",
+    "description": "1080p HD webcam with built-in microphone",
+    "category": "Electronics",
+    "price": 79.99,
+    "stock_quantity": 200,
+    "unit": "units"
+  },
+  {
+    "product_id": "prod_006",
+    "name": "Desk Lamp",
+    "description": "LED desk lamp with adjustable brightness",
+    "category": "Furniture",
+    "price": 34.99,
+    "stock_quantity": 450,
+    "unit": "units"
+  },
+  {
+    "product_id": "prod_007",
+    "name": "Monitor 27 inch",
+    "description": "27 inch 4K UHD monitor",
+    "category": "Electronics",
+    "price": 399.99,
+    "stock_quantity": 150,
+    "unit": "units"
+  },
+  {
+    "product_id": "prod_008",
+    "name": "External SSD 1TB",
+    "description": "Portable 1TB external SSD",
+    "category": "Storage",
+    "price": 129.99,
+    "stock_quantity": 350,
+    "unit": "units"
+  }
+]
