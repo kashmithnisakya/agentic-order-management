@@ -37,7 +37,7 @@ class OrderProcessingAgent:
             in understanding customer needs. You excel at interpreting natural language requests
             and converting them into accurate order specifications. You always validate product
             availability and ensure customer satisfaction.""",
-            verbose=True,
+            verbose=False,
             allow_delegation=False,
             llm=llm
         )
@@ -109,7 +109,7 @@ class OrderProcessingAgent:
         crew = Crew(
             agents=[self.agent],
             tasks=[task],
-            verbose=True
+            verbose=False
         )
 
         try:

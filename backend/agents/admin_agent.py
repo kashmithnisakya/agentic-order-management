@@ -35,7 +35,7 @@ class AdminAgent:
             spotting potential issues, and providing actionable recommendations to
             improve business performance. You have a keen eye for detail and can
             quickly synthesize complex data into clear insights.""",
-            verbose=True,
+            verbose=False,
             allow_delegation=False,
             llm=llm
         )

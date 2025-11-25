@@ -33,7 +33,7 @@ class InventoryAgent:
             stock tracking and proactively identify potential stock issues before
             they become problems. You're great at suggesting alternatives when
             products are unavailable.""",
-            verbose=True,
+            verbose=False,
             allow_delegation=False,
             llm=llm
         )

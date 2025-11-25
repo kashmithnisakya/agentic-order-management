@@ -36,7 +36,7 @@ class StatusTrackingAgent:
             technical order information into clear, friendly messages that customers can
             easily understand. You're proactive in providing relevant details and setting
             appropriate expectations.""",
-            verbose=True,
+            verbose=False,
             allow_delegation=False,
             llm=llm
         )
@@ -125,7 +125,7 @@ class StatusTrackingAgent:
         crew = Crew(
             agents=[self.agent],
             tasks=[task],
-            verbose=True
+            verbose=False
         )
 
         try:
