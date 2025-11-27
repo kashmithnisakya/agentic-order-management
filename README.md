@@ -25,6 +25,8 @@ An AI-powered order management system that uses natural language processing to h
 
 ## Architecture
 
+This project uses a multi-agent AI architecture. Each agent specializes in a specific domain:
+
 ```
 Client Dashboard (React)          Admin Dashboard (React)
          |                                   |
@@ -32,13 +34,13 @@ Client Dashboard (React)          Admin Dashboard (React)
                         │
                    FastAPI Server
                         │
-            ┌───────────┼───────────┐
-            │           │           │
-      Order Agent  Inventory   Status Agent
+            ┌───────────┼───────────┬───────────┐
+            │           │           │           │
+      Order Agent  Inventory   Status Agent  Admin Agent
                     Agent
 ```
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed architecture documentation.
+**For detailed architecture, design decisions, and implementation details, see [ARCHITECTURE.md](./ARCHITECTURE.md)**
 
 ## Prerequisites
 
@@ -47,6 +49,13 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed architecture documentation
 - **OpenAI API Key** (recommended)
   - Get your API key from [https://platform.openai.com](https://platform.openai.com)
   - OR use Ollama for local LLM (free, no API key needed)
+
+## Quick Start
+
+For detailed setup instructions for each component, see:
+- [Backend README](./backend/README.md) - FastAPI server setup (can use `uv`)
+- [Client Frontend README](./client-frontend/README.md) - Customer dashboard
+- [Admin Frontend README](./admin-frontend/README.md) - Admin dashboard
 
 ## Installation
 
@@ -80,12 +89,6 @@ cp .env.example .env
 # Edit .env and add your OpenAI API key:
 # OPENAI_API_KEY=your_openai_api_key_here  # Required!
 # LLM_MODEL=gpt-4o                          # Default model
-
-# Alternative: Use Ollama (free, local)
-# Comment out OPENAI_API_KEY and set:
-# LLM_MODEL=ollama/llama3.2
-# LLM_BASE_URL=http://localhost:11434
-# Then run: ollama serve
 ```
 
 ### 3. Client Frontend Setup
@@ -345,18 +348,6 @@ The system uses **OpenAI GPT-4o** by default for best performance:
 - **Fast**: Optimized for speed
 - **Well-documented**: Extensive documentation and support
 
-**Alternative: Use Ollama (Free & Local)**
-
-If you prefer free, local LLM:
-```bash
-# 1. Install Ollama from https://ollama.ai
-# 2. Pull model: ollama pull llama3.2
-# 3. Start server: ollama serve
-# 4. Update .env:
-#    Comment out OPENAI_API_KEY
-#    LLM_MODEL=ollama/llama3.2
-#    LLM_BASE_URL=http://localhost:11434
-```
 
 ### Mock Data
 
@@ -405,7 +396,6 @@ Edit `backend/data/users.json`:
 - Install all dependencies: `pip install -r requirements.txt`
 - **Check that OPENAI_API_KEY is set in `.env`**
 - Verify your API key is valid at [OpenAI Platform](https://platform.openai.com)
-- If using Ollama, check that it's running: `ollama serve`
 
 ### Frontend won't start
 - Ensure Node.js 18+ is installed
@@ -434,26 +424,3 @@ For production deployment, consider:
 5. **Monitoring**: Implement logging and monitoring (e.g., Sentry, DataDog)
 6. **Scaling**: Deploy agents as separate microservices
 7. **Security**: Add rate limiting, input validation, API keys
-
-## License
-
-MIT License
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## Support
-
-For issues and questions:
-- Create an issue in the GitHub repository
-- Check existing documentation in `ARCHITECTURE.md` and `AI_AGENTS.md`
-
-## Acknowledgments
-
-- Built with [FastAPI](https://fastapi.tiangolo.com/)
-- AI agents powered by [CrewAI](https://www.crewai.io/)
-- Frontend built with [React](https://react.dev/) and [Vite](https://vitejs.dev/)

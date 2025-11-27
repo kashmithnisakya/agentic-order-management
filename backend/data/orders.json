@@ -1,1 +1,19 @@
-[]
+[
+  {
+    "order_id": "order_ff62f6d6",
+    "user_id": "user_001",
+    "items": [
+      {
+        "product_id": "prod_001",
+        "product_name": "Wireless Keyboard",
+        "quantity": 1,
+        "unit_price": 49.99,
+        "total_price": 49.99
+      }
+    ],
+    "total_amount": 49.99,
+    "status": "shipped",
+    "created_at": "2025-11-27T12:26:22.812401Z",
+    "updated_at": "2025-11-27T12:28:10.916948Z"
+  }
+]

@@ -1,5 +1,26 @@
 # Agentic Order Management System - Architecture
 
+## Design Rationale
+
+This is a proof-of-concept demonstrating a multi-agent AI architecture for order management. The goal is to showcase how specialized AI agents can work together to handle business logic that traditionally requires complex form-based UIs and backend workflows.
+
+### Design Approach
+
+Instead of traditional MVC or microservices, this POC uses a **multi-agent pattern** where each agent is responsible for a specific domain:
+
+- **Order Agent**: Natural language parsing, order validation, and creation
+- **Inventory Agent**: Stock management and availability checking
+- **Status Agent**: Order status queries and reporting
+- **Admin Agent**: Analytics generation and system monitoring
+
+### Key Technical Decisions
+
+1. **Agent Specialization**: Each agent has a single responsibility, making the system modular and testable
+2. **Natural Language Interface**: Reduces UI complexity by allowing users to interact conversationally
+3. **JSON-based Storage**: Simple data layer for POC - can be swapped for a real database
+4. **FastAPI Backend**: Modern, async-capable API framework with automatic documentation
+5. **CrewAI Framework**: Handles agent orchestration and inter-agent communication
+
 ## System Overview
 
 This is an AI-powered order management system that uses natural language processing to handle customer orders and administrative tasks through intelligent agents built with CrewAI.
@@ -8,54 +29,54 @@ This is an AI-powered order management system that uses natural language process
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Frontend Layer                           │
+│                     Frontend Layer                          │
 ├──────────────────────────┬──────────────────────────────────┤
-│   Client Dashboard       │    Admin Dashboard                │
-│   (React + TypeScript)   │    (React + TypeScript)           │
-│   - Natural language     │    - Agent management             │
-│   - Order placement      │    - Order overview               │
-│   - Status tracking      │    - Analytics dashboard          │
+│   Client Dashboard       │    Admin Dashboard               │
+│   (React + TypeScript)   │    (React + TypeScript)          │
+│   - Natural language     │    - Agent management            │
+│   - Order placement      │    - Order overview              │
+│   - Status tracking      │    - Analytics dashboard         │
 └──────────────┬───────────┴────────────┬─────────────────────┘
                │                        │
                └────────────┬───────────┘
                            │ HTTP/REST
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   Backend API Layer                          │
-│                  (FastAPI + Python)                          │
+│                   Backend API Layer                         │
+│                  (FastAPI + Python)                         │
 ├─────────────────────────────────────────────────────────────┤
-│  Endpoints:                                                  │
-│  - /api/orders/process-natural-language                      │
-│  - /api/orders/status                                        │
-│  - /api/admin/agents                                         │
-│  - /api/products                                             │
+│  Endpoints:                                                 │
+│  - /api/orders/process-natural-language                     │
+│  - /api/orders/status                                       │
+│  - /api/admin/agents                                        │
+│  - /api/products                                            │
 └──────────────┬──────────────────────────────────────────────┘
                │
                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│               AI Agent Layer (CrewAI)                        │
+│               AI Agent Layer (CrewAI)                       │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────────┐  ┌──────────────────┐                │
+│  ┌──────────────────┐  ┌──────────────────┐                 │
 │  │ Order Agent      │  │ Inventory Agent   │                │
 │  │ - Parse orders   │  │ - Check stock     │                │
 │  │ - Validate       │  │ - Update quantity │                │
-│  └──────────────────┘  └──────────────────┘                │
-│                                                               │
-│  ┌──────────────────┐  ┌──────────────────┐                │
+│  └──────────────────┘  └──────────────────┘                 │
+│                                                             │
+│  ┌──────────────────┐  ┌──────────────────┐                 │
 │  │ Status Agent     │  │ Admin Agent       │                │
 │  │ - Track orders   │  │ - Analytics       │                │
 │  │ - Updates        │  │ - Management      │                │
-│  └──────────────────┘  └──────────────────┘                │
+│  └──────────────────┘  └──────────────────┘                 │
 └──────────────┬──────────────────────────────────────────────┘
                │
                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Data Layer                                │
+│                    Data Layer                               │
 ├─────────────────────────────────────────────────────────────┤
-│  - Mock JSON databases                                       │
-│  - orders.json                                               │
-│  - products.json                                             │
-│  - users.json                                                │
+│  - Mock JSON databases                                      │
+│  - orders.json                                              │
+│  - products.json                                            │
+│  - users.json                                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
