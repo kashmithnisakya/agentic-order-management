@@ -28,7 +28,9 @@ body {
 }
 
 .header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 2rem;
   background: var(--white);
   padding: 2rem;
@@ -68,8 +70,9 @@ body {
   flex-direction: column;
   position: sticky;
   top: 2rem;
-  height: fit-content;
+  height: calc(100vh - 4rem);
   max-height: calc(100vh - 4rem);
+  overflow: hidden;
 }
 
 .section-title {

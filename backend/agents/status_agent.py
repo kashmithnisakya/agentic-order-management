@@ -1,7 +1,10 @@
 from crewai import Agent, Task, Crew, LLM
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+from utils.logger import get_agent_logger
+
+logger = get_agent_logger("status_tracking")
 
 
 class StatusTrackingAgent:
@@ -47,6 +50,7 @@ class StatusTrackingAgent:
             order for order in self.orders_data
             if order["user_id"] == user_id
         ]
+        logger.debug(f"Found {len(user_orders)} orders for user {user_id}")
         return user_orders
 
     def get_order_by_id(self, order_id: str):
@@ -84,24 +88,31 @@ class StatusTrackingAgent:
         1. Analyze the customer's query to understand what they're asking about
         2. Determine if they're asking about:
            - A specific order (try to identify which one)
+           - A specific product (e.g., "keyboard status" means orders containing keyboards)
            - All their orders
            - General order status
            - Delivery estimates
 
-        3. Provide a helpful, friendly response in JSON format:
+        3. If they mention a product name (keyboard, mouse, laptop, etc.), find orders containing that product
+
+        4. Provide a helpful, friendly response in JSON format:
         {{
-            "success": true/false,
-            "message": "human-readable response to customer",
+            "success": true,
+            "message": "Clear, specific response about their orders. Include order IDs, status, and product details.",
             "order_ids": ["list", "of", "relevant", "order", "ids"],
             "details": "additional helpful information"
         }}
 
-        Be conversational and friendly. Provide clear information about order status.
-        If asking about delivery, provide realistic estimates based on the current status:
-        - pending: "Your order will be processed within 1-2 business days"
-        - processing: "Your order is being prepared and will ship soon"
-        - shipped: "Your order is on the way! Expected delivery in 3-5 business days"
-        - delivered: "Your order has been delivered"
+        IMPORTANT:
+        - Be conversational and friendly
+        - Provide SPECIFIC information: order IDs, product names, quantities, statuses
+        - If the customer has orders, show them! Don't just say "visit our website"
+        - Include delivery estimates based on status:
+          * pending: "Your order will be processed within 1-2 business days"
+          * processing: "Your order is being prepared and will ship soon"
+          * shipped: "Your order is on the way! Expected delivery in 3-5 business days"
+          * delivered: "Your order has been delivered"
+        - If no orders found, say "You don't have any orders yet" (not "visit our website")
         """
 
         task = Task(
@@ -119,6 +130,8 @@ class StatusTrackingAgent:
         Returns:
             dict: Status information and response message
         """
+        logger.info(f"Processing status query for user: {user_id}")
+        logger.debug(f"Status query: {query}")
 
         # Create and execute the task
         task = self.create_status_query_task(query, user_id)
@@ -129,18 +142,24 @@ class StatusTrackingAgent:
         )
 
         try:
+            logger.debug("Starting AI agent processing for status query...")
             result = crew.kickoff()
+            logger.debug(f"Agent result: {result}")
 
             # Parse the agent's response
             try:
                 response_data = json.loads(str(result))
+                logger.debug(f"Parsed status response: {response_data}")
             except json.JSONDecodeError:
+                logger.warning("Failed to parse JSON from agent response, trying regex extraction")
                 # If not valid JSON, try to extract JSON from the text
                 import re
                 json_match = re.search(r'\{.*\}', str(result), re.DOTALL)
                 if json_match:
                     response_data = json.loads(json_match.group())
+                    logger.debug(f"Extracted status response: {response_data}")
                 else:
+                    logger.warning("Could not extract valid JSON, using fallback")
                     # Fallback: provide basic order info
                     user_orders = self.get_user_orders(user_id)
                     return {
@@ -151,6 +170,7 @@ class StatusTrackingAgent:
 
             # Get the relevant orders
             order_ids = response_data.get("order_ids", [])
+            logger.debug(f"Relevant order IDs: {order_ids}")
             relevant_orders = [
                 self.get_order_by_id(oid) for oid in order_ids
                 if self.get_order_by_id(oid)
@@ -158,8 +178,10 @@ class StatusTrackingAgent:
 
             # If no specific orders identified, return all user orders
             if not relevant_orders:
+                logger.debug("No specific orders identified, returning all user orders")
                 relevant_orders = self.get_user_orders(user_id)
 
+            logger.info(f"Status query completed. Returning {len(relevant_orders)} orders")
             return {
                 "success": response_data.get("success", True),
                 "message": response_data.get("message", "Here are your orders:"),
@@ -167,6 +189,7 @@ class StatusTrackingAgent:
             }
 
         except Exception as e:
+            logger.error(f"Error processing status query: {str(e)}", exc_info=True)
             # Fallback to basic functionality
             user_orders = self.get_user_orders(user_id)
             return {
@@ -178,11 +201,12 @@ class StatusTrackingAgent:
     def _generate_basic_status_message(self, orders):
         """Generate a basic status message when AI agent fails"""
         if not orders:
-            return "You don't have any orders yet."
+            return "You don't have any orders yet. Would you like to place an order?"
 
         if len(orders) == 1:
             order = orders[0]
-            return f"Your order {order['order_id']} is currently {order['status']}."
+            items_summary = ", ".join([f"{item['product_name']} (x{item['quantity']})" for item in order.get('items', [])])
+            return f"Your order {order['order_id']} is currently {order['status'].upper()}.\n\nItems: {items_summary}\nTotal: ${order['total_amount']}\n\n{'Your order will be processed within 1-2 business days.' if order['status'] == 'pending' else 'Your order is being prepared and will ship soon.'}"
 
         status_counts = {}
         for order in orders:
@@ -190,7 +214,12 @@ class StatusTrackingAgent:
             status_counts[status] = status_counts.get(status, 0) + 1
 
         summary = ", ".join([f"{count} {status}" for status, count in status_counts.items()])
-        return f"You have {len(orders)} orders: {summary}."
+        message = f"You have {len(orders)} orders: {summary}.\n\n"
+        message += "Recent orders:\n"
+        for order in orders[:3]:  # Show last 3 orders
+            items = ", ".join([item['product_name'] for item in order.get('items', [])])
+            message += f"- {order['order_id']}: {order['status'].upper()} - {items} (${order['total_amount']})\n"
+        return message
 
     def update_order_status(self, order_id: str, new_status: str):
         """Update the status of an order"""
@@ -210,7 +239,7 @@ class StatusTrackingAgent:
             }
 
         order["status"] = new_status
-        order["updated_at"] = datetime.now(datetime.UTC).isoformat().replace('+00:00', 'Z')
+        order["updated_at"] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
         return {
             "success": True,

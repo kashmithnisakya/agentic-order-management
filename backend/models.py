@@ -39,9 +39,15 @@ class Order(BaseModel):
     updated_at: str
 
 
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class NaturalLanguageRequest(BaseModel):
     user_id: str
     message: str
+    chat_history: Optional[List[ChatMessage]] = []
 
 
 class NaturalLanguageResponse(BaseModel):
@@ -61,6 +67,25 @@ class StatusQueryResponse(BaseModel):
     success: bool
     message: str
     orders: Optional[List[Order]] = None
+
+
+class InquiryRequest(BaseModel):
+    message: str
+    chat_history: Optional[List[ChatMessage]] = []
+
+
+class ProductMention(BaseModel):
+    product_id: str
+    product_name: str
+    available_quantity: int
+    price: float
+
+
+class InquiryResponse(BaseModel):
+    success: bool
+    message: str
+    products_mentioned: Optional[List[ProductMention]] = None
+    error: Optional[str] = None
 
 
 class AgentConfig(BaseModel):

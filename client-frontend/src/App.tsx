@@ -66,55 +66,128 @@ function App() {
     setLoading(true)
 
     try {
-      // Try to place order first (most common action)
-      const response = await fetch(`${API_BASE}/chat/order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: USER_ID,
-          message: currentInput
-        })
-      })
-
-      const data = await response.json()
-
+      const lowerInput = currentInput.toLowerCase()
       let assistantContent = ''
-      if (data.success) {
-        assistantContent = `${data.message}\n\n`
-        if (data.order_id) {
-          assistantContent += `Order ID: ${data.order_id}\n`
-        }
-        if (data.order_details?.total_amount) {
-          assistantContent += `Total Amount: $${data.order_details.total_amount}\n`
-        }
-        if (data.order_details?.items) {
-          assistantContent += '\nItems:\n'
-          data.order_details.items.forEach((item: any) => {
-            assistantContent += `- ${item.product_name} x ${item.quantity} = $${item.total_price}\n`
-          })
-        }
-      } else {
-        // If order fails, try status query
-        if (data.message?.toLowerCase().includes('status') ||
-            data.message?.toLowerCase().includes('order') ||
-            currentInput.toLowerCase().includes('where') ||
-            currentInput.toLowerCase().includes('status')) {
-          try {
-            const statusResponse = await fetch(`${API_BASE}/chat/status`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                user_id: USER_ID,
-                query: currentInput
-              })
+
+      // Prepare chat history (convert messages to chat history format)
+      const chatHistory = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
+
+      // Check if it's a status query (expanded keywords)
+      if (lowerInput.includes('status') ||
+          lowerInput.includes('where is') ||
+          lowerInput.includes('where are') ||
+          lowerInput.includes('track') ||
+          lowerInput.includes('my order') ||
+          lowerInput.includes('order status') ||
+          lowerInput.includes('keyboard status') ||
+          lowerInput.includes('mouse status') ||
+          lowerInput.includes('check order') ||
+          lowerInput.includes('check my') ||
+          (lowerInput.includes('order') && lowerInput.includes('?')) ||
+          (lowerInput.includes('my') && (lowerInput.includes('keyboard') || lowerInput.includes('mouse') || lowerInput.includes('laptop')) && lowerInput.includes('?'))) {
+        try {
+          const statusResponse = await fetch(`${API_BASE}/chat/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: USER_ID,
+              query: currentInput
             })
-            const statusData = await statusResponse.json()
-            assistantContent = statusData.message || data.message
-          } catch {
-            assistantContent = data.message || data.error || 'Sorry, I could not process your request.'
+          })
+          const statusData = await statusResponse.json()
+          assistantContent = statusData.message
+
+          // Add order details if available
+          if (statusData.orders && statusData.orders.length > 0) {
+            assistantContent += '\n\nYour Orders:\n'
+            statusData.orders.forEach((order: any) => {
+              assistantContent += `\n📦 Order ${order.order_id}`
+              assistantContent += `\n   Status: ${order.status.toUpperCase()}`
+              assistantContent += `\n   Total: $${order.total_amount}`
+              assistantContent += `\n   Items:`
+              order.items.forEach((item: any) => {
+                assistantContent += `\n   - ${item.product_name} x ${item.quantity}`
+              })
+              assistantContent += `\n`
+            })
           }
-        } else {
-          assistantContent = data.message || data.error || 'Sorry, I could not process your request.'
+        } catch (error) {
+          assistantContent = 'Sorry, I could not check your order status. Please try again.'
+        }
+      }
+      // Check if it's a product inquiry (asking about availability, products)
+      else if (lowerInput.includes('do you have') ||
+               lowerInput.includes('have you got') ||
+               lowerInput.includes('is there') ||
+               lowerInput.includes('are there') ||
+               lowerInput.includes('what products') ||
+               lowerInput.includes('show me') ||
+               lowerInput.includes('available') ||
+               lowerInput.includes('in stock') ||
+               (lowerInput.includes('?') && !lowerInput.includes('order'))) {
+        try {
+          const inquiryResponse = await fetch(`${API_BASE}/chat/inquiry`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: currentInput,
+              chat_history: chatHistory
+            })
+          })
+          const inquiryData = await inquiryResponse.json()
+          assistantContent = inquiryData.message
+
+          // Add product details if mentioned
+          if (inquiryData.products_mentioned && inquiryData.products_mentioned.length > 0) {
+            assistantContent += '\n\n'
+            inquiryData.products_mentioned.forEach((product: any) => {
+              assistantContent += `\n${product.product_name}: ${product.available_quantity} units at $${product.price} each`
+            })
+          }
+        } catch (error) {
+          assistantContent = 'Sorry, I could not process your inquiry. Please try again.'
+        }
+      }
+      // Otherwise, try to process as an order
+      else {
+        try {
+          const orderResponse = await fetch(`${API_BASE}/chat/order`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: USER_ID,
+              message: currentInput,
+              chat_history: chatHistory
+            })
+          })
+
+          const orderData = await orderResponse.json()
+
+          if (orderData.success) {
+            assistantContent = `${orderData.message}\n\n`
+            if (orderData.order_id) {
+              assistantContent += `Order ID: ${orderData.order_id}\n`
+            }
+            if (orderData.order_details?.total_amount) {
+              assistantContent += `Total Amount: $${orderData.order_details.total_amount}\n`
+            }
+            if (orderData.order_details?.items) {
+              assistantContent += '\nItems:\n'
+              orderData.order_details.items.forEach((item: any) => {
+                assistantContent += `- ${item.product_name} x ${item.quantity} = $${item.total_price}\n`
+              })
+            }
+
+            // Refresh product list to show updated stock quantities
+            fetchProducts()
+          } else {
+            assistantContent = orderData.message || orderData.error || 'Sorry, I could not process your order.'
+          }
+        } catch (error) {
+          assistantContent = 'Sorry, I encountered an error processing your order. Please try again.'
         }
       }
 

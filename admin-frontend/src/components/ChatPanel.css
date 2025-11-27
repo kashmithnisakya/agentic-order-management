@@ -28,9 +28,12 @@
 .chat-messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   margin-bottom: 1.5rem;
   padding-right: 0.5rem;
-  min-height: 400px;
+  min-height: 200px;
+  max-height: 100%;
+  scroll-behavior: smooth;
 }
 
 .chat-messages::-webkit-scrollbar {
@@ -53,9 +56,10 @@
 
 .chat-empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  min-height: 200px;
   text-align: center;
   color: #6b7280;
   padding: 2rem;
@@ -91,8 +95,11 @@
   border-radius: 16px;
   max-width: 90%;
   word-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
   line-height: 1.6;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow-wrap: break-word;
 }
 
 .message-user {
@@ -204,12 +211,14 @@
   }
 
   .chat-messages {
-    min-height: 300px;
+    min-height: 200px;
+    max-height: 60vh;
   }
 
   .message-content {
     max-width: 95%;
     padding: 0.875rem 1rem;
+    font-size: 0.95rem;
   }
 
   .chat-send-btn {

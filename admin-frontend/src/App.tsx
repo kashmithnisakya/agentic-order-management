@@ -62,12 +62,31 @@ function App() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [issues, setIssues] = useState<Issue[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
+  // Initial data fetch
   useEffect(() => {
-    fetchAnalytics()
-    fetchIssues()
-    fetchOrders()
+    fetchAllData()
   }, [])
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAllData()
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const fetchAllData = async () => {
+    setIsRefreshing(true)
+    await Promise.all([
+      fetchAnalytics(),
+      fetchIssues(),
+      fetchOrders()
+    ])
+    setIsRefreshing(false)
+  }
 
   const fetchOrders = async () => {
     try {
@@ -103,6 +122,24 @@ function App() {
     <div className="app">
       <header className="header">
         <h1>Admin Dashboard</h1>
+        <button
+          onClick={fetchAllData}
+          disabled={isRefreshing}
+          className="refresh-button"
+          style={{
+            marginLeft: 'auto',
+            padding: '8px 16px',
+            background: isRefreshing ? '#ccc' : '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: isRefreshing ? 'not-allowed' : 'pointer',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}
+        >
+          {isRefreshing ? '↻ Refreshing...' : '↻ Refresh'}
+        </button>
       </header>
 
       <main className="main-container">
@@ -177,7 +214,7 @@ function App() {
         </div>
 
         <div className="chat-section">
-          <ChatPanel />
+          <ChatPanel onDataChange={fetchAllData} />
         </div>
       </main>
     </div>
