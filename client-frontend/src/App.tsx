@@ -98,22 +98,8 @@ function App() {
             })
           })
           const statusData = await statusResponse.json()
+          // Backend now provides fully formatted message with order history
           assistantContent = statusData.message
-
-          // Add order details if available
-          if (statusData.orders && statusData.orders.length > 0) {
-            assistantContent += '\n\nYour Orders:\n'
-            statusData.orders.forEach((order: any) => {
-              assistantContent += `\n📦 Order ${order.order_id}`
-              assistantContent += `\n   Status: ${order.status.toUpperCase()}`
-              assistantContent += `\n   Total: $${order.total_amount}`
-              assistantContent += `\n   Items:`
-              order.items.forEach((item: any) => {
-                assistantContent += `\n   - ${item.product_name} x ${item.quantity}`
-              })
-              assistantContent += `\n`
-            })
-          }
         } catch (error) {
           assistantContent = 'Sorry, I could not check your order status. Please try again.'
         }
@@ -265,11 +251,17 @@ function App() {
               <p>I can help you with:</p>
               <ul>
                 <li>Place orders using natural language</li>
-                <li>Check order status</li>
-                <li>View order history</li>
+                <li>Check order status and history</li>
+                <li>Track shipments (pending, processing, shipped, delivered)</li>
                 <li>Answer questions about products</li>
               </ul>
-              <p className="example">Try: "I need 50 wireless keyboards" or "Where is my order?"</p>
+              <p className="example">Try asking:</p>
+              <ul className="examples-list">
+                <li>"I need 50 wireless keyboards"</li>
+                <li>"Where is my order?"</li>
+                <li>"Show me my order history"</li>
+                <li>"What's the status of my recent orders?"</li>
+              </ul>
             </div>
           )}
 

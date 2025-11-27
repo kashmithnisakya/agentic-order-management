@@ -276,6 +276,27 @@ body {
   border-radius: 12px;
 }
 
+.welcome-message .examples-list {
+  margin-top: 1rem;
+}
+
+.welcome-message .examples-list li {
+  color: var(--forest);
+  font-style: italic;
+  font-weight: 500;
+  padding: 0.5rem 0;
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.welcome-message .examples-list li:before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--sage);
+  font-weight: 700;
+}
+
 .message {
   display: flex;
   flex-direction: column;

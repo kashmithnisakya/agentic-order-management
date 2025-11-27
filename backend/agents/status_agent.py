@@ -123,6 +123,82 @@ class StatusTrackingAgent:
 
         return task
 
+    def get_status_details(self, status: str):
+        """Get detailed information about an order status"""
+        status_info = {
+            "pending": {
+                "icon": "⏳",
+                "label": "PENDING",
+                "description": "Your order is awaiting processing",
+                "estimate": "Will be processed within 1-2 business days"
+            },
+            "processing": {
+                "icon": "⚙️",
+                "label": "PROCESSING",
+                "description": "Your order is being prepared",
+                "estimate": "Will ship within 1-2 business days"
+            },
+            "shipped": {
+                "icon": "🚚",
+                "label": "SHIPPED",
+                "description": "Your order is on the way",
+                "estimate": "Expected delivery in 3-5 business days"
+            },
+            "delivered": {
+                "icon": "✅",
+                "label": "DELIVERED",
+                "description": "Your order has been completed",
+                "estimate": "Order completed successfully"
+            },
+            "cancelled": {
+                "icon": "❌",
+                "label": "CANCELLED",
+                "description": "This order was cancelled",
+                "estimate": "No delivery expected"
+            }
+        }
+        return status_info.get(status.lower(), {
+            "icon": "📦",
+            "label": status.upper(),
+            "description": "Order status",
+            "estimate": "Please check back later"
+        })
+
+    def format_order_history(self, orders):
+        """Format order history with rich details"""
+        if not orders:
+            return "You don't have any previous orders yet. Would you like to place an order?"
+
+        message = f"📋 ORDER HISTORY ({len(orders)} order{'s' if len(orders) != 1 else ''})\n\n"
+
+        for idx, order in enumerate(orders):
+            status_info = self.get_status_details(order['status'])
+
+            message += f"{status_info['icon']} Order #{order['order_id']}\n"
+            message += f"   Status: {status_info['label']} - {status_info['description']}\n"
+            message += f"   {status_info['estimate']}\n"
+            message += f"   Total Amount: ${order['total_amount']}\n"
+
+            # Format date
+            if order.get('created_at'):
+                try:
+                    from datetime import datetime
+                    order_date = datetime.fromisoformat(order['created_at'].replace('Z', '+00:00'))
+                    message += f"   Placed: {order_date.strftime('%B %d, %Y at %I:%M %p')}\n"
+                except:
+                    message += f"   Placed: {order['created_at']}\n"
+
+            # List items
+            message += f"   Items:\n"
+            for item in order.get('items', []):
+                price_info = f" (${item['total_price']})" if item.get('total_price') else ""
+                message += f"      • {item['product_name']} × {item['quantity']}{price_info}\n"
+
+            if idx < len(orders) - 1:
+                message += f"\n"
+
+        return message
+
     def handle_status_query(self, query: str, user_id: str):
         """
         Handle a natural language status query
@@ -132,6 +208,18 @@ class StatusTrackingAgent:
         """
         logger.info(f"Processing status query for user: {user_id}")
         logger.debug(f"Status query: {query}")
+
+        # Get user orders
+        user_orders = self.get_user_orders(user_id)
+
+        # If no orders, return early
+        if not user_orders:
+            logger.info("No orders found for user")
+            return {
+                "success": True,
+                "message": "You don't have any previous orders yet. Would you like to place an order?",
+                "orders": []
+            }
 
         # Create and execute the task
         task = self.create_status_query_task(query, user_id)
@@ -160,11 +248,10 @@ class StatusTrackingAgent:
                     logger.debug(f"Extracted status response: {response_data}")
                 else:
                     logger.warning("Could not extract valid JSON, using fallback")
-                    # Fallback: provide basic order info
-                    user_orders = self.get_user_orders(user_id)
+                    # Fallback: provide formatted order info
                     return {
                         "success": True,
-                        "message": self._generate_basic_status_message(user_orders),
+                        "message": self.format_order_history(user_orders),
                         "orders": user_orders
                     }
 
@@ -179,22 +266,26 @@ class StatusTrackingAgent:
             # If no specific orders identified, return all user orders
             if not relevant_orders:
                 logger.debug("No specific orders identified, returning all user orders")
-                relevant_orders = self.get_user_orders(user_id)
+                relevant_orders = user_orders
+
+            # Generate formatted message
+            formatted_message = response_data.get("message", "")
+            if relevant_orders:
+                formatted_message += "\n\n" + self.format_order_history(relevant_orders)
 
             logger.info(f"Status query completed. Returning {len(relevant_orders)} orders")
             return {
                 "success": response_data.get("success", True),
-                "message": response_data.get("message", "Here are your orders:"),
+                "message": formatted_message,
                 "orders": relevant_orders
             }
 
         except Exception as e:
             logger.error(f"Error processing status query: {str(e)}", exc_info=True)
-            # Fallback to basic functionality
-            user_orders = self.get_user_orders(user_id)
+            # Fallback to formatted functionality
             return {
                 "success": True,
-                "message": self._generate_basic_status_message(user_orders),
+                "message": self.format_order_history(user_orders),
                 "orders": user_orders
             }
 
