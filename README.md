@@ -2,6 +2,8 @@
 
 An AI-powered order management system that uses natural language processing to handle customer orders and administrative tasks through intelligent agents built with CrewAI.
 
+https://github.com/user-attachments/assets/abcd281d-ba81-42e3-8a98-2c257ba8f950
+
 ## Features
 
 - **Natural Language Order Processing**: Customers can place orders using plain English (e.g., "I would like to order 100 units of wireless keyboards")
